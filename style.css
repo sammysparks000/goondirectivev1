@@ -1,0 +1,17 @@
+.goondirective-absolute {
+    background: #000;
+    border: 2px solid #ff0000;
+    color: #ff0000;
+    font-family: 'Courier New', Courier, monospace;
+}
+.gd_overstimulated {
+    animation: jitter 0.1s infinite;
+    filter: sepia(100%) saturate(300%) hue-rotate(-50deg);
+}
+@keyframes jitter {
+    0% { transform: translate(0,0); }
+    50% { transform: translate(1px, -1px); }
+    100% { transform: translate(-1px, 1px); }
+}
+.kink-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px; }
+input[type=range] { width: 100%; accent-color: #ff0000; }
