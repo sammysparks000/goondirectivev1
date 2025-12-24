@@ -57,32 +57,4 @@
                 </div>
                 <p style="font-size: 0.8em; opacity: 0.7;"><i>Tip: Use local paths like /public/user/vids/ for faster loading.</i></p>
             </div>
-        </div> </div> </div> ```
-
-
-
-### Structural Improvements Made:
-1.  **Corrected Nesting**: Fixed the `div` closure order to ensure the `inline-drawer-content` properly contains all sections, including the **Video Media Hub**.
-2.  **ID Consistency**: Added unique `id` attributes to inputs to facilitate more precise DOM manipulation by the JavaScript listeners.
-3.  **Styling Placeholders**: Added inline styles for the image display to ensure it maintains a visible area even if a URL is not yet provided.
-4.  **Metric Rows**: Grouped labels and sliders into `gd_metric_row` classes for better alignment in the CSS layout.
-
-### Updated JavaScript Synchronization
-Ensure your `index.js` uses the following selector to capture changes from these inputs:
-
-```javascript
-$(document).on("input change", ".gd_sync", function() {
-    const key = $(this).data("key");
-    const val = $(this).val();
-    
-    // Logic to handle nested object keys like "wardrobe.clothed"
-    const keys = key.split('.');
-    if (keys.length > 1) {
-        extension_settings[extensionName][keys[0]][keys[1]] = val;
-    } else {
-        extension_settings[extensionName][key] = val;
-    }
-    
-    updateUI(); // Refresh the character image instantly
-    saveSettingsDebounced();
-});
+        </div> </div> </div> 
