@@ -5,19 +5,32 @@
             <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
         </div>
         <div class="inline-drawer-content">
-            <div id="gd_visual_hub" style="text-align:center;">
-                <img id="gd_img_display" src="" style="width:100%; border-radius:10px; border: 2px solid #ff0000;">
-                <div class="gd_url_inputs">
-                    <input type="text" class="gd_wardrobe_url gd_sync" data-key="wardrobe.clothed" placeholder="Clothed URL">
-                    <input type="text" class="gd_wardrobe_url gd_sync" data-key="wardrobe.underwear" placeholder="Underwear URL">
-                    <input type="text" class="gd_wardrobe_url gd_sync" data-key="wardrobe.nude" placeholder="Nude URL">
+            <div id="gd_visual_hub" style="text-align:center; padding: 10px;">
+                <img id="gd_img_display" src="" style="width:100%; border-radius:10px; border: 2px solid #ff0000; min-height: 100px; display: block; margin: 0 auto;">
+                <div class="gd_url_inputs" style="margin-top: 10px;">
+                    <input type="text" id="gd_url_clothed" class="gd_sync" data-key="wardrobe.clothed" placeholder="Clothed URL/Path">
+                    <input type="text" id="gd_url_underwear" class="gd_sync" data-key="wardrobe.underwear" placeholder="Underwear URL/Path">
+                    <input type="text" id="gd_url_nude" class="gd_sync" data-key="wardrobe.nude" placeholder="Nude URL/Path">
                 </div>
             </div>
 
+            <hr>
+
             <h4>Core Metrics</h4>
-            <label>Corruption: <input type="range" class="gd_sync" data-key="corruption" min="0" max="100"></label>
-            <label>Influence: <input type="range" class="gd_sync" data-key="influence" min="0" max="100"></label>
-            <label>Brat Factor: <input type="range" class="gd_sync" data-key="bratFactor" min="0" max="100"></label>
+            <div class="gd_metric_row">
+                <label for="gd_corruption_slider">Corruption:</label>
+                <input type="range" id="gd_corruption_slider" class="gd_sync" data-key="corruption" min="0" max="100">
+            </div>
+            <div class="gd_metric_row">
+                <label for="gd_influence_slider">Influence:</label>
+                <input type="range" id="gd_influence_slider" class="gd_sync" data-key="influence" min="0" max="100">
+            </div>
+            <div class="gd_metric_row">
+                <label for="gd_brat_slider">Brat Factor:</label>
+                <input type="range" id="gd_brat_slider" class="gd_sync" data-key="bratFactor" min="0" max="100">
+            </div>
+
+            <hr>
 
             <h4>Kink Matrix (Active Modifiers)</h4>
             <div class="kink-grid">
@@ -29,6 +42,47 @@
                 <label><input type="checkbox" class="gd_kink_toggle" data-kink="fluids"> Fluids/Draining</label>
                 <label><input type="checkbox" class="gd_kink_toggle" data-kink="taboo"> Taboo/Elena</label>
             </div>
-        </div>
-    </div>
-</div>
+
+            <hr>
+
+            <h4>Video Media Hub</h4>
+            <div id="gd_video_config">
+                <div class="gd_metric_row">
+                    <label>Gooning Clip:</label>
+                    <input type="text" class="gd_sync" data-key="wardrobe.goon_clip_url" placeholder="e.g. /public/vids/clip.mp4">
+                </div>
+                <div class="gd_metric_row">
+                    <label>Petplay Clip:</label>
+                    <input type="text" class="gd_sync" data-key="wardrobe.pet_clip_url" placeholder="e.g. https://site.com/vid.webm">
+                </div>
+                <p style="font-size: 0.8em; opacity: 0.7;"><i>Tip: Use local paths like /public/user/vids/ for faster loading.</i></p>
+            </div>
+        </div> </div> </div> ```
+
+
+
+### Structural Improvements Made:
+1.  **Corrected Nesting**: Fixed the `div` closure order to ensure the `inline-drawer-content` properly contains all sections, including the **Video Media Hub**.
+2.  **ID Consistency**: Added unique `id` attributes to inputs to facilitate more precise DOM manipulation by the JavaScript listeners.
+3.  **Styling Placeholders**: Added inline styles for the image display to ensure it maintains a visible area even if a URL is not yet provided.
+4.  **Metric Rows**: Grouped labels and sliders into `gd_metric_row` classes for better alignment in the CSS layout.
+
+### Updated JavaScript Synchronization
+Ensure your `index.js` uses the following selector to capture changes from these inputs:
+
+```javascript
+$(document).on("input change", ".gd_sync", function() {
+    const key = $(this).data("key");
+    const val = $(this).val();
+    
+    // Logic to handle nested object keys like "wardrobe.clothed"
+    const keys = key.split('.');
+    if (keys.length > 1) {
+        extension_settings[extensionName][keys[0]][keys[1]] = val;
+    } else {
+        extension_settings[extensionName][key] = val;
+    }
+    
+    updateUI(); // Refresh the character image instantly
+    saveSettingsDebounced();
+});
