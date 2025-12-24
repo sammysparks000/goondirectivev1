@@ -1,8 +1,7 @@
 {
-  "display_name": "GoonDirective V1 - Absolute",
-  "loading_order": 10,
-  "js": "index.js",
-  "css": "style.css",
-  "author": "Vault",
-  "version": "1.5.0"
+    "display_name": "GoonDirective V1",
+    "loading_order": 1,
+    "js": "index.js",
+    "author": "Vault",
+    "version": "1.0.0"
 }
