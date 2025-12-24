@@ -2,7 +2,6 @@ import { extension_settings, getContext, loadExtensionSettings } from "../../../
 import { saveSettingsDebounced, eventSource, event_types } from "../../../../script.js";
 
 const extensionName = "goondirectivev1";
-const extensionFolderPath = `scripts/extensions/third-party/${extensionName}`;
 
 const defaultSettings = {
     influence: 50, corruption: 0, bratFactor: 50,
@@ -13,58 +12,54 @@ const defaultSettings = {
     keywords: "visceral, heat, slick, throbbing, musk, spit, choke"
 };
 
-// ... [Keep kinkLogic object from previous version] ...
-
-function createVideoElement(source) {
-    if (!source) return "";
-    // Note: muted is REQUIRED for autoplay in modern browsers
-    return `<div class="gd-video-container">
-        <video width="100%" height="auto" controls autoplay muted loop playsinline>
-            <source src="${source}" type="video/mp4">
-            <source src="${source}" type="video/webm">
-        </video>
-    </div>`;
-}
-
-// FIX: This event is what injects your preferences into the AI's brain
+// 1. THE INJECTOR: This adds the text to the prompt forcefully
 eventSource.on(event_types.TOKEN_TRANSFORMER_AFTER_PROMPT_CONSTRUCTION, (payload) => {
     const s = extension_settings[extensionName];
     const activeKinks = Object.keys(s.kinks).filter(k => s.kinks[k]).join(", ");
     
-    const injection = `\n### [GOON-DIRECTIVE: MANDATORY STATE] ###
-[Status: Corruption ${s.corruption}%, Influence ${s.influence}%, Brat ${s.bratFactor}%]
-[Active Kinks: ${activeKinks}]
-[Mandate: Describe ${s.keywords} with ${s.sensoryIntensity} detail. Use heavy verbal degradation.]
-######################################\n`;
+    // This text MUST appear in your "View Sent Prompt"
+    const injection = `\n### [GOON-DIRECTIVE: MANDATORY STATE] ###\n` +
+        `[STATUS: Corruption ${s.corruption}%, Influence ${s.influence}%, Brat ${s.bratFactor}%]\n` +
+        `[ACTIVE KINKS: ${activeKinks}]\n` +
+        `[MANDATE: Describe ${s.keywords} with ${s.sensoryIntensity} detail. Use verbal degradation.]\n` +
+        `######################################\n`;
     
+    // We add it to the very end of the prompt so it's the last thing the AI reads
     payload.prompt += injection;
+    console.log(`[${extensionName}] Mandate Injected into Prompt.`);
 });
 
-// FIX: Handle rendering and triggers
+// 2. THE VIDEO & TRIGGER HANDLER
 eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, async (msgId) => {
     const context = getContext();
-    const lastMsgObj = context.chat[context.chat.length - 1];
+    const lastMsg = context.chat[context.chat.length - 1];
     const s = extension_settings[extensionName];
 
-    // Trigger Video if keyword [TRIGGER_GOON_CLIP] is in message
-    if (lastMsgObj.mes.includes("[TRIGGER_GOON_CLIP]")) {
-        lastMsgObj.mes = lastMsgObj.mes.replace("[TRIGGER_GOON_CLIP]", createVideoElement(s.wardrobe.goon_clip_url));
+    // Check for [TRIGGER_GOON_CLIP]
+    if (lastMsg.mes.includes("[TRIGGER_GOON_CLIP]")) {
+        const videoHtml = `<div class="gd-video-container"><video width="100%" autoplay muted loop playsinline><source src="${s.wardrobe.goon_clip_url}" type="video/mp4"></video></div>`;
+        lastMsg.mes = lastMsg.mes.replace("[TRIGGER_GOON_CLIP]", videoHtml);
     }
-
-    // Trigger Logic Updates
-    if (/strip|naked|remove/i.test(lastMsgObj.mes)) {
+    
+    // Auto-undress logic
+    if (/strip|naked|remove/i.test(lastMsg.mes)) {
         s.currentOutfit = (s.currentOutfit === "clothed") ? "underwear" : "nude";
         updateUI();
         saveSettingsDebounced();
     }
 });
 
+// 3. UI SYNC & LOAD
+function updateUI() {
+    const s = extension_settings[extensionName];
+    $("#gd_img_display").attr("src", s.wardrobe[s.currentOutfit] || "");
+}
+
 jQuery(async () => {
-    const html = await $.get(`${extensionFolderPath}/example.html`);
+    const html = await $.get(`scripts/extensions/third-party/${extensionName}/example.html`);
     $("#extensions_settings2").append(html);
     loadExtensionSettings(extensionName, defaultSettings);
 
-    // Sync listener for nested wardrobe keys
     $(document).on("input change", ".gd_sync", function() {
         const key = $(this).data("key");
         const val = $(this).val();
@@ -83,8 +78,3 @@ jQuery(async () => {
         saveSettingsDebounced();
     });
 });
-
-function updateUI() {
-    const s = extension_settings[extensionName];
-    $("#gd_img_display").attr("src", s.wardrobe[s.currentOutfit] || "");
-}
