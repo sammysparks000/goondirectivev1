@@ -1,7 +1,8 @@
-import { extension_settings, getContext, loadExtensionSettings } from "../../../extensions.js";
-import { saveSettingsDebounced, eventSource, event_types } from "../../../../script.js";
+import { extension_settings, loadExtensionSettings, getContext } from "../../../extensions.js";
+import { eventSource, event_types, saveSettingsDebounced } from "../../../../script.js";
 
 const extensionName = "goondirectivev1";
+const extensionFolderPath = `scripts/extensions/third-party/${extensionName}`;
 
 const defaultSettings = {
     corruption: 0,
@@ -17,38 +18,52 @@ const defaultSettings = {
     kinks: { gooning: false, stimulants: false, petplay: false, taboo: false }
 };
 
-// THE INJECTOR: This is the part that was missing in your prompt
+// 1. PROMPT INJECTOR
 eventSource.on(event_types.TOKEN_TRANSFORMER_AFTER_PROMPT_CONSTRUCTION, (payload) => {
     const s = extension_settings[extensionName];
     if (!s) return;
-
+    
     const injection = `\n### [GOON-DIRECTIVE: MANDATORY STATE] ###\n` +
         `[STATUS: Corruption ${s.corruption}%, Influence ${s.influence}%, Brat ${s.bratFactor}%]\n` +
-        `[KINK MODE: ${s.kinks.gooning ? 'GOONING ACTIVE' : 'STANDARD'}]\n` +
+        `[MANDATE: Character is ${s.currentOutfit}. Focus on visceral detail and verbal degradation.]\n` +
         `######################################\n`;
     
     payload.prompt += injection;
+    console.log("Vault: Mandate injected into prompt construction.");
 });
 
-// THE RENDERER: For videos
+// 2. VIDEO RENDERER
 eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, (msgId) => {
     const s = extension_settings[extensionName];
     const context = getContext();
     const lastMsg = context.chat[context.chat.length - 1];
 
     if (lastMsg && lastMsg.mes.includes("[TRIGGER_GOON_CLIP]")) {
-        const videoHtml = `<video width="100%" autoplay muted loop playsinline src="${s.wardrobe.goon_clip_url}"></video>`;
+        console.log("Vault: Video trigger detected. Rendering player...");
+        const videoHtml = `<div class="gd-video-container" style="margin:10px 0; border:2px solid red;">
+            <video width="100%" autoplay muted loop playsinline controls src="${s.wardrobe.goon_clip_url}"></video>
+        </div>`;
         lastMsg.mes = lastMsg.mes.replace("[TRIGGER_GOON_CLIP]", videoHtml);
     }
 });
 
-// INITIALIZATION
-jQuery(async () => {
-    const html = await $.get(`scripts/extensions/third-party/${extensionName}/example.html`);
-    $("#extensions_settings2").append(html);
+// 3. UI INITIALIZATION
+async function init() {
+    console.log("Vault: Initializing GoonDirective...");
     
+    // Load settings
     loadExtensionSettings(extensionName, defaultSettings);
 
+    // Load HTML
+    try {
+        const html = await $.get(`${extensionFolderPath}/example.html`);
+        $("#extensions_settings2").append(html);
+        console.log("Vault: UI loaded successfully.");
+    } catch (err) {
+        console.error("Vault: Failed to load example.html. Check path: " + extensionFolderPath);
+    }
+
+    // Listener for UI Sync
     $(document).on("input change", ".gd_sync", function() {
         const key = $(this).data("key");
         const val = $(this).val();
@@ -61,6 +76,7 @@ jQuery(async () => {
         }
         saveSettingsDebounced();
     });
+}
 
-    console.log("Vault: GoonDirective Loaded Successfully.");
-});
+// BOOT
+jQuery(init);
