@@ -13,124 +13,78 @@ const defaultSettings = {
     keywords: "visceral, heat, slick, throbbing, musk, spit, choke"
 };
 
-const kinkLogic = {
-    gooning: "Focus on edging, long-form arousal, and 'goon-talk'.",
-    stimulants: "Simulate high-intensity energy, 'coke-play' themes, and frantic desire.",
-    petplay: "Adopt the persona of a 'kitty/pet'; focus on tail plugs and pet-like submission.",
-    latex: "Emphasize the shine, tightness, and scent of latex/shiny gear.",
-    impact: "Detail slapping, stinging, and physical marking (face/ass).",
-    fluids: "Focus on spitting and draining multiple loads.",
-    taboo: "Incorporate Elena cameo, mommy/daughter tension, and cheating themes."
-};
+// ... [Keep kinkLogic object from previous version] ...
 
-function createVideoElement(source, autoplay = true) {
+function createVideoElement(source) {
     if (!source) return "";
-    const autoplayAttr = autoplay ? "autoplay muted" : "";
-    return `
-    <div class="gd-video-container">
-        <video width="100%" height="auto" controls ${autoplayAttr} loop>
+    // Note: muted is REQUIRED for autoplay in modern browsers
+    return `<div class="gd-video-container">
+        <video width="100%" height="auto" controls autoplay muted loop playsinline>
             <source src="${source}" type="video/mp4">
             <source src="${source}" type="video/webm">
-            Your browser does not support the video tag.
         </video>
     </div>`;
 }
 
-function getSystemInjection() {
+// FIX: This event is what injects your preferences into the AI's brain
+eventSource.on(event_types.TOKEN_TRANSFORMER_AFTER_PROMPT_CONSTRUCTION, (payload) => {
     const s = extension_settings[extensionName];
-    const activeKinks = Object.keys(s.kinks).filter(k => s.kinks[k]).map(k => kinkLogic[k]).join(" ");
-    const exposure = s.currentOutfit === "nude" ? "completely naked" : s.currentOutfit;
-
-    return `\n[GOON-DIRECTIVE V1: ABSOLUTE OVERRIDE]
-- COMPLIANCE: ${s.influence}% | CORRUPTION: ${s.corruption}% | BRAT-STATUS: ${s.bratFactor}%
-- VISUAL STATE: ${exposure}.
-- ACTIVE PREFERENCES: ${activeKinks}.
-- MANDATE: Use ${s.sensoryIntensity} detail. Prioritize ${s.keywords}. 
-- VERBAL: Use heavy verbal degradation and dirty talk. Avoid clinical terms.
-[MANDATE END]`;
-}
-
-function updateUI() {
-    const s = extension_settings[extensionName];
-    const imgUrl = s.wardrobe[s.currentOutfit];
-    $("#gd_img_display").attr("src", imgUrl || "");
+    const activeKinks = Object.keys(s.kinks).filter(k => s.kinks[k]).join(", ");
     
-    if (s.corruption > 75 || s.kinks.stimulants) {
-        $("#gd_img_display").addClass("gd_overstimulated");
-    } else {
-        $("#gd_img_display").removeClass("gd_overstimulated");
-    }
-}
+    const injection = `\n### [GOON-DIRECTIVE: MANDATORY STATE] ###
+[Status: Corruption ${s.corruption}%, Influence ${s.influence}%, Brat ${s.bratFactor}%]
+[Active Kinks: ${activeKinks}]
+[Mandate: Describe ${s.keywords} with ${s.sensoryIntensity} detail. Use heavy verbal degradation.]
+######################################\n`;
+    
+    payload.prompt += injection;
+});
 
-async function handleTriggers(message) {
-    const s = extension_settings[extensionName];
-    let changed = false;
-
-    if (/strip|naked|remove/i.test(message)) {
-        s.currentOutfit = (s.currentOutfit === "clothed") ? "underwear" : "nude";
-        changed = true;
-    }
-    if (/moan|cum|please|fuck|spit|choke/i.test(message)) {
-        s.corruption = Math.min(100, parseInt(s.corruption) + 5);
-        changed = true;
-    }
-
-    if (changed) {
-        updateUI();
-        saveSettingsDebounced();
-    }
-}
-
-// SINGLE event listener for message rendering
-eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, (msgId) => {
+// FIX: Handle rendering and triggers
+eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, async (msgId) => {
     const context = getContext();
     const lastMsgObj = context.chat[context.chat.length - 1];
     const s = extension_settings[extensionName];
 
-    // Handle Logic Triggers
-    handleTriggers(lastMsgObj.mes);
-
-    // Handle Video Rendering
-    const videoRegex = /(?:https?:\/\/|(?:\/|.\/)).+\.(?:mp4|webm|ogg)/i;
-    const match = lastMsgObj.mes.match(videoRegex);
-    if (match) {
-        lastMsgObj.mes = lastMsgObj.mes.replace(match[0], createVideoElement(match[0]));
-    }
-    
-    if (s.kinks.gooning && lastMsgObj.mes.includes("[TRIGGER_GOON_CLIP]")) {
+    // Trigger Video if keyword [TRIGGER_GOON_CLIP] is in message
+    if (lastMsgObj.mes.includes("[TRIGGER_GOON_CLIP]")) {
         lastMsgObj.mes = lastMsgObj.mes.replace("[TRIGGER_GOON_CLIP]", createVideoElement(s.wardrobe.goon_clip_url));
     }
 
-    // Append the NSFW System Mandate
-    lastMsgObj.mes += getSystemInjection();
+    // Trigger Logic Updates
+    if (/strip|naked|remove/i.test(lastMsgObj.mes)) {
+        s.currentOutfit = (s.currentOutfit === "clothed") ? "underwear" : "nude";
+        updateUI();
+        saveSettingsDebounced();
+    }
 });
 
 jQuery(async () => {
     const html = await $.get(`${extensionFolderPath}/example.html`);
     $("#extensions_settings2").append(html);
     loadExtensionSettings(extensionName, defaultSettings);
-    
-    // Corrected Nested Sync Listener
+
+    // Sync listener for nested wardrobe keys
     $(document).on("input change", ".gd_sync", function() {
         const key = $(this).data("key");
         const val = $(this).val();
         const keys = key.split('.');
-        
         if (keys.length > 1) {
             extension_settings[extensionName][keys[0]][keys[1]] = val;
         } else {
             extension_settings[extensionName][key] = val;
         }
-        
         updateUI();
         saveSettingsDebounced();
     });
 
     $(document).on("change", ".gd_kink_toggle", function() {
-        const kink = $(this).data("kink");
-        extension_settings[extensionName].kinks[kink] = $(this).is(":checked");
+        extension_settings[extensionName].kinks[$(this).data("kink")] = $(this).is(":checked");
         saveSettingsDebounced();
     });
-
-    updateUI();
 });
+
+function updateUI() {
+    const s = extension_settings[extensionName];
+    $("#gd_img_display").attr("src", s.wardrobe[s.currentOutfit] || "");
+}
