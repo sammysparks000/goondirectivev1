@@ -114,4 +114,20 @@ eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, (msgId) => {
         const clipUrl = s.wardrobe.goon_clip_url || ""; 
         lastMsgObj.mes = lastMsgObj.mes.replace("[TRIGGER_GOON_CLIP]", createVideoElement(clipUrl));
     }
+    $(document).on("input change", ".gd_sync", function() {
+    const key = $(this).data("key");
+    const val = $(this).val();
+    
+    // Logic to handle nested object keys like "wardrobe.clothed"
+    const keys = key.split('.');
+    if (keys.length > 1) {
+        extension_settings[extensionName][keys[0]][keys[1]] = val;
+    } else {
+        extension_settings[extensionName][key] = val;
+    }
+    
+    updateUI(); // Refresh the character image instantly
+    saveSettingsDebounced();
+}
 });
+
